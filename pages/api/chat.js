@@ -1,7 +1,7 @@
 // pages/api/chat.js
 
 import OpenAI from "openai";
-import funnel from "../../utils/funnel/funnel.json";
+import funnel from "../../utils/funnel.json";
 import { extractMemoryFromMessage } from "../../utils/memory";
 import { getCurrentPhase, getRandomMessage } from "../../utils/phaseEngine";
 import { liaPersona } from "../../utils/liaPersona";
