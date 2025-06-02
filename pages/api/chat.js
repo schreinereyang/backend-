@@ -1,5 +1,3 @@
-// pages/api/chat.js
-
 import OpenAI from "openai";
 import funnel from "../../utils/funnel.json";
 import { extractMemoryFromMessage } from "../../utils/memory";
@@ -11,7 +9,11 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req, res) {
-  const { message } = req.body;
+  const { message } = req.body || {};
+
+  if (!message) {
+    return res.status(400).json({ error: "Message is required" });
+  }
 
   // Initialiser la mémoire globale si elle n'existe pas
   if (!global.memory) {
