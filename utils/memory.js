@@ -1,6 +1,8 @@
 // memory.js
 
 export function extractMemoryFromMessage(message, memory) {
+  if (!message || typeof message !== "string") return memory;  // ✅ La vérif qui manquait
+
   const updatedMemory = { ...memory };
 
   // Historique des derniers messages (max 5)
