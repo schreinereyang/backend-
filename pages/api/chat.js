@@ -1,25 +1,27 @@
-// pages/api/chat.js
-
 import OpenAI from "openai";
 import funnel from "../../utils/funnel.json";
 import { extractMemoryFromMessage } from "../../utils/memory";
 import { getCurrentPhase, getRandomMessage } from "../../utils/phaseEngine";
 import { liaPersona } from "../../utils/liaPersona";
 
-// Initialisation de l'API OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 export default async function handler(req, res) {
-  const { message } = req.body || {};
+  // 🔓 Autoriser les requêtes CORS
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (!message) {
-    console.log("Aucun message reçu dans la requête");
-    return res.status(400).json({ error: "Message is required" });
+  if (req.method === "OPTIONS") {
+    return res.status(200).end(); // gestion du preflight CORS
   }
 
-  // Initialiser la mémoire globale si elle n'existe pas
+  const { message } = req.body || {};
+  if (!message) return res.status(400).json({ error: "Message is required" });
+
+  // 🧠 Initialiser la mémoire globale
   if (!global.memory) {
     global.memory = {
       name: null,
@@ -30,23 +32,19 @@ export default async function handler(req, res) {
     };
   }
 
-  try {
-    // Mise à jour de la mémoire
-    global.memory = extractMemoryFromMessage(message, global.memory);
-    console.log("Mémoire mise à jour :", global.memory);
+  // 📥 Mise à jour mémoire
+  global.memory = extractMemoryFromMessage(message, global.memory);
+  console.log("Mémoire actuelle :", global.memory);
 
-    // Déterminer la phase du funnel
-    const currentPhase = getCurrentPhase(global.memory, funnel, message);
-    console.log("Phase actuelle :", currentPhase?.name);
+  // 🔍 Détection de la phase
+  const currentPhase = getCurrentPhase(global.memory, funnel, message);
+  console.log("Phase actuelle détectée :", currentPhase?.name);
 
-    // Générer une réponse simple via le funnel
-    const aiReply = getRandomMessage(currentPhase, "fr"); // TODO: auto-détection langue
+  // 🧠 Réponse simple depuis funnel
+  const aiReply = getRandomMessage(currentPhase, "fr");
 
-    if (aiReply !== "...") {
-      return res.status(200).json({ reply: aiReply });
-    }
-
-    // Si pas de réponse pré-définie, appel à GPT-4
+  // 🧠 Sinon on appelle GPT si pas de réponse définie
+  if (aiReply === "...") {
     const memoryContext = `
 Fan:
 - Prénom: ${global.memory.name || "inconnu"}
@@ -70,18 +68,23 @@ Style : ${liaPersona.style}
 Personnalité : ${liaPersona.personality}
 `;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: promptSystem },
-        { role: "user", content: message },
-      ],
-    });
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: promptSystem },
+          { role: "user", content: message },
+        ],
+      });
 
-    const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir bien compris 😘";
-    res.status(200).json({ reply: gptReply });
-  } catch (error) {
-    console.error("Erreur dans le handler API:", error);
-    res.status(500).json({ error: "Erreur interne du serveur", details: error?.message || error });
+      const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir bien compris 😘";
+      return res.status(200).json({ reply: gptReply });
+    } catch (error) {
+      console.error("Erreur GPT:", error);
+      return res.status(500).json({ error: "Erreur GPT" });
+    }
   }
+
+  // ✅ Sinon on renvoie la réponse funnel
+  res.status(200).json({ reply: aiReply });
 }
