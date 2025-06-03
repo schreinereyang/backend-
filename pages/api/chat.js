@@ -11,15 +11,16 @@ const openai = new OpenAI({
 
 export default async function handler(req, res) {
   const allowedOrigins = [
-    "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn", // ← Ton extension Chrome
+    "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn",
     "https://backend-rnei.vercel.app",
     "https://onlymoly.vercel.app"
   ];
 
-  const origin = req.headers.origin;
+  const origin = req.headers.origin || ""; // fallback si absent
 
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
+  // ✅ Autorise extension Chrome même sans origin
+  if (!origin || allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn");
   } else {
     return res.status(403).json({ error: "Forbidden: Origin not allowed" });
   }
@@ -28,7 +29,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Vary", "Origin");
 
-  // ✅ Gestion des requêtes préflight CORS
+  // ✅ Réponse préflight OPTIONS
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -57,14 +58,14 @@ export default async function handler(req, res) {
   const currentPhase = getCurrentPhase(global.memory, funnel, message);
   console.log("🔎 Phase détectée :", currentPhase?.name);
 
-  // ✅ Réponse directe du funnel si dispo
+  // ✅ Réponse funnel directe si dispo
   const aiReply = getRandomMessage(currentPhase, "fr");
 
   if (aiReply !== "...") {
     return res.status(200).json({ reply: aiReply });
   }
 
-  // ✅ Sinon → fallback GPT avec prompt personnalisé
+  // ✅ Sinon → fallback GPT
   const memoryContext = `
 Fan:
 - Prénom: ${global.memory.name || "inconnu"}
