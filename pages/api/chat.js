@@ -21,7 +21,6 @@ export default async function handler(req, res) {
   if (allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   } else {
-    // Sécurité : ne rien autoriser si l’origine n’est pas dans la whitelist
     return res.status(403).json({ error: "Forbidden: Origin not allowed" });
   }
 
@@ -29,11 +28,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Vary", "Origin");
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  // ✅ Réponse aux requêtes préflight CORS
+  // ✅ Gestion des requêtes préflight CORS
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
