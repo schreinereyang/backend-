@@ -10,21 +10,28 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req, res) {
-  // ✅ Liste des origines autorisées (inclure l’ID réel de ton extension Chrome)
   const allowedOrigins = [
-    "chrome-extension://ihfcomkeiifjhoepijbjgfhhjngjjidn", // ← à adapter à ton vrai ID
+    "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn", // ← Ton extension Chrome
     "https://backend-rnei.vercel.app",
-    "https://onlymoly.vercel.app",
+    "https://onlymoly.vercel.app"
   ];
 
   const origin = req.headers.origin;
+
   if (allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
+  } else {
+    // Sécurité : ne rien autoriser si l’origine n’est pas dans la whitelist
+    return res.status(403).json({ error: "Forbidden: Origin not allowed" });
   }
 
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Vary", "Origin");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
 
   // ✅ Réponse aux requêtes préflight CORS
   if (req.method === "OPTIONS") {
