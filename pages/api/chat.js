@@ -7,7 +7,6 @@ import { liaPersona } from "../../utils/liaPersona";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export default async function handler(req, res) {
-  // CORS - toujours en haut
   const allowedOrigins = [
     "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn",
     "https://backend-rnei.vercel.app",
@@ -15,9 +14,10 @@ export default async function handler(req, res) {
   ];
 
   const origin = req.headers.origin || "";
+  const isAllowed = !origin || allowedOrigins.includes(origin);
 
-  if (!origin || allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin || "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn");
+  if (isAllowed) {
+    res.setHeader("Access-Control-Allow-Origin", origin || allowedOrigins[0]);
   } else {
     return res.status(403).json({ error: "Forbidden: Origin not allowed" });
   }
@@ -26,48 +26,48 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Vary", "Origin");
 
-  // Réponse immédiate aux requêtes préflight
+  // ✅ STOP ICI pour les requêtes préflight
   if (req.method === "OPTIONS") {
+    console.log("🛡️ Requête OPTIONS acceptée");
     return res.status(200).end();
   }
 
-  // NE PAS accéder à req.body avant ce point ⛔
+  // ✅ NE PAS accéder à req.body avant d’avoir filtré OPTIONS
+  try {
+    const { message } = req.body || {};
+    if (!message) {
+      return res.status(400).json({ error: "Message is required" });
+    }
 
-  const { message } = req.body || {};
-  if (!message) {
-    return res.status(400).json({ error: "Message is required" });
-  }
+    if (!global.memory) {
+      global.memory = {
+        name: null,
+        age: null,
+        isAlone: null,
+        lastMessages: [],
+        purchaseMade: false,
+      };
+    }
 
-  if (!global.memory) {
-    global.memory = {
-      name: null,
-      age: null,
-      isAlone: null,
-      lastMessages: [],
-      purchaseMade: false,
-    };
-  }
+    global.memory = extractMemoryFromMessage(message, global.memory);
+    console.log("🧠 Mémoire actuelle :", global.memory);
 
-  global.memory = extractMemoryFromMessage(message, global.memory);
-  console.log("🧠 Mémoire actuelle :", global.memory);
+    const currentPhase = getCurrentPhase(global.memory, funnel, message);
+    console.log("🔎 Phase détectée :", currentPhase?.name);
 
-  const currentPhase = getCurrentPhase(global.memory, funnel, message);
-  console.log("🔎 Phase détectée :", currentPhase?.name);
+    const aiReply = getRandomMessage(currentPhase, "fr");
+    if (aiReply !== "...") {
+      return res.status(200).json({ reply: aiReply });
+    }
 
-  const aiReply = getRandomMessage(currentPhase, "fr");
-
-  if (aiReply !== "...") {
-    return res.status(200).json({ reply: aiReply });
-  }
-
-  const memoryContext = `
+    const memoryContext = `
 Fan:
 - Prénom: ${global.memory.name || "inconnu"}
 - Âge: ${global.memory.age || "inconnu"}
 - Est seul ? ${global.memory.isAlone === true ? "oui" : global.memory.isAlone === false ? "non" : "inconnu"}
 `;
 
-  const promptSystem = `
+    const promptSystem = `
 Tu es ${liaPersona.name}, une modèle OnlyFans ${liaPersona.tone} de ${liaPersona.origin}, 20 ans.
 Objectif : ${liaPersona.goal}
 
@@ -83,7 +83,6 @@ Style : ${liaPersona.style}
 Personnalité : ${liaPersona.personality}
 `;
 
-  try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
@@ -94,8 +93,9 @@ Personnalité : ${liaPersona.personality}
 
     const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir bien compris 😘";
     return res.status(200).json({ reply: gptReply });
+
   } catch (err) {
     console.error("❌ Erreur GPT:", err);
-    return res.status(500).json({ error: "Erreur GPT" });
+    return res.status(500).json({ error: "Erreur serveur" });
   }
 }
