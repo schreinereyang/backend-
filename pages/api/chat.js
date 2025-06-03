@@ -4,21 +4,18 @@ import { extractMemoryFromMessage } from "../../utils/memory";
 import { getCurrentPhase, getRandomMessage } from "../../utils/phaseEngine";
 import { liaPersona } from "../../utils/liaPersona";
 
-// 🔐 Initialisation OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export default async function handler(req, res) {
+  // CORS - toujours en haut
   const allowedOrigins = [
     "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn",
     "https://backend-rnei.vercel.app",
     "https://onlymoly.vercel.app"
   ];
 
-  const origin = req.headers.origin || ""; // fallback si absent
+  const origin = req.headers.origin || "";
 
-  // ✅ Autorise extension Chrome même sans origin
   if (!origin || allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin || "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn");
   } else {
@@ -29,17 +26,18 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Vary", "Origin");
 
-  // ✅ Réponse préflight OPTIONS
+  // Réponse immédiate aux requêtes préflight
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
+
+  // NE PAS accéder à req.body avant ce point ⛔
 
   const { message } = req.body || {};
   if (!message) {
     return res.status(400).json({ error: "Message is required" });
   }
 
-  // ✅ Initialisation mémoire globale
   if (!global.memory) {
     global.memory = {
       name: null,
@@ -50,22 +48,18 @@ export default async function handler(req, res) {
     };
   }
 
-  // ✅ Mise à jour de la mémoire
   global.memory = extractMemoryFromMessage(message, global.memory);
   console.log("🧠 Mémoire actuelle :", global.memory);
 
-  // ✅ Détection de la phase active
   const currentPhase = getCurrentPhase(global.memory, funnel, message);
   console.log("🔎 Phase détectée :", currentPhase?.name);
 
-  // ✅ Réponse funnel directe si dispo
   const aiReply = getRandomMessage(currentPhase, "fr");
 
   if (aiReply !== "...") {
     return res.status(200).json({ reply: aiReply });
   }
 
-  // ✅ Sinon → fallback GPT
   const memoryContext = `
 Fan:
 - Prénom: ${global.memory.name || "inconnu"}
