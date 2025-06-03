@@ -4,18 +4,29 @@ import { extractMemoryFromMessage } from "../../utils/memory";
 import { getCurrentPhase, getRandomMessage } from "../../utils/phaseEngine";
 import { liaPersona } from "../../utils/liaPersona";
 
+// 🔐 Initialisation OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 export default async function handler(req, res) {
-  // ✅ CORS Headers
- res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
-res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-res.setHeader("Vary", "Origin");
+  // ✅ Liste des origines autorisées (inclure l’ID réel de ton extension Chrome)
+  const allowedOrigins = [
+    "chrome-extension://ihfcomkeiifjhoepijbjgfhhjngjjidn", // ← à adapter à ton vrai ID
+    "https://backend-rnei.vercel.app",
+    "https://onlymoly.vercel.app",
+  ];
 
-  // ✅ Gestion requête préflight CORS
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Vary", "Origin");
+
+  // ✅ Réponse aux requêtes préflight CORS
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -25,7 +36,7 @@ res.setHeader("Vary", "Origin");
     return res.status(400).json({ error: "Message is required" });
   }
 
-  // ✅ Initialiser mémoire globale si absente
+  // ✅ Initialisation mémoire globale
   if (!global.memory) {
     global.memory = {
       name: null,
@@ -36,22 +47,22 @@ res.setHeader("Vary", "Origin");
     };
   }
 
-  // ✅ Mettre à jour la mémoire
+  // ✅ Mise à jour de la mémoire
   global.memory = extractMemoryFromMessage(message, global.memory);
-  console.log("Mémoire actuelle :", global.memory);
+  console.log("🧠 Mémoire actuelle :", global.memory);
 
-  // ✅ Déterminer la phase en fonction du funnel
+  // ✅ Détection de la phase active
   const currentPhase = getCurrentPhase(global.memory, funnel, message);
-  console.log("Phase actuelle détectée :", currentPhase?.name);
+  console.log("🔎 Phase détectée :", currentPhase?.name);
 
-  // ✅ Si phase contient un message défini → utiliser directement
+  // ✅ Réponse directe du funnel si dispo
   const aiReply = getRandomMessage(currentPhase, "fr");
 
   if (aiReply !== "...") {
     return res.status(200).json({ reply: aiReply });
   }
 
-  // ✅ Sinon → fallback GPT
+  // ✅ Sinon → fallback GPT avec prompt personnalisé
   const memoryContext = `
 Fan:
 - Prénom: ${global.memory.name || "inconnu"}
@@ -87,7 +98,7 @@ Personnalité : ${liaPersona.personality}
     const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir bien compris 😘";
     return res.status(200).json({ reply: gptReply });
   } catch (err) {
-    console.error("Erreur GPT:", err);
+    console.error("❌ Erreur GPT:", err);
     return res.status(500).json({ error: "Erreur GPT" });
   }
 }
