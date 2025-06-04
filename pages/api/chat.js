@@ -9,7 +9,7 @@ const openai = new OpenAI({
 export default async function handler(req, res) {
   const allowedOrigins = [
     "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn",
-    "https://backend-rnei.vercel.app",
+    "https://backend-onlymoly.vercel.app",
     "https://onlymoly.vercel.app"
   ];
 
