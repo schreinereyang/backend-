@@ -43,6 +43,7 @@ export default async function handler(req, res) {
     };
   }
 
+  // 🧠 Mémorisation depuis le message fan
   global.memory = extractMemoryFromMessage(message, global.memory);
   console.log("🧠 Mémoire fan :", global.memory);
 
@@ -99,11 +100,9 @@ Règles :
 
     const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir bien compris 😘";
 
-    // 💡 Stocke les messages précédents pour éviter répétitions (optionnel mais conseillé)
-    global.memory.lastMessages.push(gptReply);
-    if (global.memory.lastMessages.length > 10) {
-      global.memory.lastMessages = global.memory.lastMessages.slice(-10);
-    }
+    // 🧠 Mémorisation depuis la réponse IA
+    global.memory = extractMemoryFromMessage(gptReply, global.memory);
+    console.log("📝 Mémoire mise à jour après réponse :", global.memory);
 
     return res.status(200).json({ reply: gptReply });
   } catch (err) {
