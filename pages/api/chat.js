@@ -1,23 +1,23 @@
 import OpenAI from "openai";
-import funnel from "../../utils/funnel.json";
 import { extractMemoryFromMessage } from "../../utils/memory";
-import { getCurrentPhase, getRandomMessage } from "../../utils/phaseEngine";
 import { liaPersona } from "../../utils/liaPersona";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// 🔐 Initialisation OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export default async function handler(req, res) {
+  // ✅ CORS sécurisé
   const allowedOrigins = [
     "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn",
     "https://backend-rnei.vercel.app",
-    "https://onlymoly.vercel.app"
+    "https://onlymoly.vercel.app",
   ];
 
-  const origin = req.headers.origin || "";
-  const isAllowed = !origin || allowedOrigins.includes(origin);
-
-  if (isAllowed) {
-    res.setHeader("Access-Control-Allow-Origin", origin || allowedOrigins[0]);
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
   } else {
     return res.status(403).json({ error: "Forbidden: Origin not allowed" });
   }
@@ -26,63 +26,71 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Vary", "Origin");
 
-  // ✅ STOP ICI pour les requêtes préflight
   if (req.method === "OPTIONS") {
-    console.log("🛡️ Requête OPTIONS acceptée");
     return res.status(200).end();
   }
 
-  // ✅ NE PAS accéder à req.body avant d’avoir filtré OPTIONS
-  try {
-    const { message } = req.body || {};
-    if (!message) {
-      return res.status(400).json({ error: "Message is required" });
-    }
+  const { message } = req.body || {};
+  if (!message) {
+    return res.status(400).json({ error: "Message is required" });
+  }
 
-    if (!global.memory) {
-      global.memory = {
-        name: null,
-        age: null,
-        isAlone: null,
-        lastMessages: [],
-        purchaseMade: false,
-      };
-    }
+  // ✅ Mémoire fan
+  if (!global.memory) {
+    global.memory = {
+      name: null,
+      age: null,
+      isAlone: null,
+      lastMessages: [],
+      purchaseMade: false,
+    };
+  }
 
-    global.memory = extractMemoryFromMessage(message, global.memory);
-    console.log("🧠 Mémoire actuelle :", global.memory);
+  global.memory = extractMemoryFromMessage(message, global.memory);
+  console.log("🧠 Mémoire fan :", global.memory);
 
-    const currentPhase = getCurrentPhase(global.memory, funnel, message);
-    console.log("🔎 Phase détectée :", currentPhase?.name);
-
-    const aiReply = getRandomMessage(currentPhase, "fr");
-    if (aiReply !== "...") {
-      return res.status(200).json({ reply: aiReply });
-    }
-
-    const memoryContext = `
-Fan:
-- Prénom: ${global.memory.name || "inconnu"}
-- Âge: ${global.memory.age || "inconnu"}
+  // ✅ Construction du prompt GPT intelligent
+  const memoryContext = `
+Fan :
+- Prénom : ${global.memory.name || "inconnu"}
+- Âge : ${global.memory.age || "inconnu"}
 - Est seul ? ${global.memory.isAlone === true ? "oui" : global.memory.isAlone === false ? "non" : "inconnu"}
+- A déjà acheté ? ${global.memory.purchaseMade ? "oui" : "non"}
 `;
 
-    const promptSystem = `
-Tu es ${liaPersona.name}, une modèle OnlyFans ${liaPersona.tone} de ${liaPersona.origin}, 20 ans.
-Objectif : ${liaPersona.goal}
+  const promptSystem = `
+Tu es ${liaPersona.name}, une modèle OnlyFans ${liaPersona.tone}, 20 ans, originaire de ${liaPersona.origin}.
+Tu es douce, joueuse, sexy, très attentive à ton fan.
 
-Voici ce que tu sais sur le fan :
-${memoryContext}
+Ton objectif :
+- Séduire et instaurer une complicité
+- Monter doucement en intensité
+- Proposer un contenu sexy au bon moment
+- Relancer après achat
+- Rebondir naturellement s’il est silencieux
+
+Tu gères seule les phases suivantes :
+1. Présentation
+2. Validation prénom + âge
+3. Vérification s’il est seul
+4. Sexting progressif si seul
+5. Vente sexy si fan demande à voir
+6. Post-achat + vente avancée
+
+Si tu veux vendre un contenu, écris comme ceci :
+[MEDIA | titre : "Vidéo lingerie 😈" | prix : 15 | description : "Je me suis filmée rien que pour toi… en lingerie rouge 😏"]
 
 Règles :
-- Ne repose pas une question déjà posée si tu connais la réponse
-- Adapte-toi à ses mots
-- S’il n’est pas seul, passe en mode "copine virtuelle" sans vendre
+- Ne repose pas une question déjà posée
+- Ne force jamais la vente
+- Si le fan n’est pas seul → reste en mode “copine douce”
+- N’envoie le contenu payant que s’il chauffe ou le demande
 
-Style : ${liaPersona.style}
-Personnalité : ${liaPersona.personality}
+Voici ce que tu sais :
+${memoryContext}
 `;
 
+  try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
@@ -93,9 +101,8 @@ Personnalité : ${liaPersona.personality}
 
     const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir bien compris 😘";
     return res.status(200).json({ reply: gptReply });
-
   } catch (err) {
     console.error("❌ Erreur GPT:", err);
-    return res.status(500).json({ error: "Erreur serveur" });
+    return res.status(500).json({ error: "Erreur GPT" });
   }
 }
