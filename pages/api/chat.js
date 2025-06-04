@@ -2,17 +2,15 @@ import OpenAI from "openai";
 import { extractMemoryFromMessage } from "../../utils/memory";
 import { liaPersona } from "../../utils/liaPersona";
 
-// 🔐 Initialisation OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 export default async function handler(req, res) {
-  // ✅ CORS sécurisé
   const allowedOrigins = [
     "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn",
     "https://backend-rnei.vercel.app",
-    "https://onlymoly.vercel.app",
+    "https://onlymoly.vercel.app"
   ];
 
   const origin = req.headers.origin;
@@ -35,7 +33,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Message is required" });
   }
 
-  // ✅ Mémoire fan
   if (!global.memory) {
     global.memory = {
       name: null,
@@ -49,7 +46,6 @@ export default async function handler(req, res) {
   global.memory = extractMemoryFromMessage(message, global.memory);
   console.log("🧠 Mémoire fan :", global.memory);
 
-  // ✅ Construction du prompt GPT intelligent
   const memoryContext = `
 Fan :
 - Prénom : ${global.memory.name || "inconnu"}
@@ -77,8 +73,11 @@ Tu gères seule les phases suivantes :
 5. Vente sexy si fan demande à voir
 6. Post-achat + vente avancée
 
-Si tu veux vendre un contenu, écris comme ceci :
-[MEDIA | titre : "Vidéo lingerie 😈" | prix : 15 | description : "Je me suis filmée rien que pour toi… en lingerie rouge 😏"]
+Si tu veux vendre un contenu, écris-le dans ce format :
+
+[MEDIA | titre : <titre sexy> | prix : <prix en $> | description : <description excitante du contenu>]
+
+Tu peux adapter le titre et la description selon ce que tu veux vendre.
 
 Règles :
 - Ne repose pas une question déjà posée
