@@ -1,33 +1,36 @@
-// memory.js
-
 export function extractMemoryFromMessage(message, memory) {
-  if (!message || typeof message !== "string") return memory;  // ✅ La vérif qui manquait
+  if (!message || typeof message !== "string") return memory;
 
   const updatedMemory = { ...memory };
+  const safeName = (name) =>
+    name &&
+    name.length >= 2 &&
+    name.length <= 20 &&
+    !["Eli", "Moi", "Toi"].includes(name);
 
-  // Historique des derniers messages (max 5)
   updatedMemory.lastMessages = [...(updatedMemory.lastMessages || []), message].slice(-5);
 
-  // Détection prénom (FR)
-  const nameMatchFR = message.match(/(?:je m'appelle|moi c.?est|je suis) ([A-ZÀ-ſ][a-zÀ-ſ]+)/i);
-  if (nameMatchFR && !updatedMemory.name) updatedMemory.name = nameMatchFR[1];
+  // 🔁 Toujours mettre à jour le prénom si on le détecte
+  const nameMatchFR = message.match(/(?:je m'appelle|moi c.?est|appelle[- ]?moi|je suis)\s+([A-ZÀ-Ÿ][a-zà-ÿ\-']{2,})/i);
+  const nameMatchEN = message.match(/(?:my name is|i'?m|i am)\s+([A-ZÀ-Ÿ][a-zà-ÿ\-']{2,})/i);
 
-  // Détection prénom (EN, avec accents et variantes)
-  const nameMatchEN = message.match(/(?:my name is|i'?m|i am) ([A-ZÀ-ſ][a-zÀ-ſ]+)/i);
-  if (nameMatchEN && !updatedMemory.name) updatedMemory.name = nameMatchEN[1];
+  const detectedName = nameMatchFR?.[1] || nameMatchEN?.[1];
+  if (safeName(detectedName)) updatedMemory.name = detectedName;
 
-  // Détection de l'âge (formulations variées)
-  const ageMatch = message.match(/\b(?:i'?m|i am|j'ai|age is|just turned|about)?\s*(\d{2})\s*(?:ans|yo|years? old)?\b/i);
-  if (ageMatch && !updatedMemory.age) {
-    const ageNum = parseInt(ageMatch[1], 10);
-    if (ageNum >= 18 && ageNum <= 99) updatedMemory.age = ageMatch[1];
+  const ageMatch = message.match(/\b(?:j'ai|i'?m|i am)\s+(\d{2})\s*(?:ans|yo|years?)?/i);
+  if (ageMatch) {
+    const age = parseInt(ageMatch[1], 10);
+    if (age >= 18 && age <= 99) updatedMemory.age = age;
   }
 
-  // Détection disponibilité (seul / pas seul)
   const lower = message.toLowerCase();
   if (lower.includes("je suis seul") || lower.includes("i'm alone") || lower.includes("im alone")) {
     updatedMemory.isAlone = true;
-  } else if (lower.includes("je ne suis pas seul") || lower.includes("i'm not alone") || lower.includes("im not alone")) {
+  } else if (
+    lower.includes("je ne suis pas seul") ||
+    lower.includes("i'm not alone") ||
+    lower.includes("im not alone")
+  ) {
     updatedMemory.isAlone = false;
   }
 
