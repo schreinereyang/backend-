@@ -84,9 +84,8 @@ Règles :
 - Ne force jamais la vente
 - Si le fan n’est pas seul → reste en mode “copine douce”
 - N’envoie le contenu payant que s’il chauffe ou le demande
-
-Voici ce que tu sais :
-${memoryContext}
+- Ne fais pas deux fois le même compliment ou la même blague
+- Ne dis pas que vous avez le même prénom si c’est déjà arrivé
 `;
 
   try {
@@ -99,6 +98,13 @@ ${memoryContext}
     });
 
     const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir bien compris 😘";
+
+    // 💡 Stocke les messages précédents pour éviter répétitions (optionnel mais conseillé)
+    global.memory.lastMessages.push(gptReply);
+    if (global.memory.lastMessages.length > 10) {
+      global.memory.lastMessages = global.memory.lastMessages.slice(-10);
+    }
+
     return res.status(200).json({ reply: gptReply });
   } catch (err) {
     console.error("❌ Erreur GPT:", err);
