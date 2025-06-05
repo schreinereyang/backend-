@@ -1,3 +1,4 @@
+// chat.js
 import OpenAI from "openai";
 import { extractMemoryFromMessage } from "../../utils/memory";
 import { liaPersona } from "../../utils/liaPersona";
@@ -6,13 +7,11 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-if (!global.memory) global.memory = {};  // 🧠 initialisation globale multi-fan
-
 export default async function handler(req, res) {
   const allowedOrigins = [
     "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn",
     "https://backend-onlymoly.vercel.app",
-    "https://onlymoly.vercel.app"
+    "https://onlymoly.vercel.app",
   ];
 
   const origin = req.headers.origin;
@@ -26,31 +25,23 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Vary", "Origin");
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
 
-  const { message, fanId = "fan_default" } = req.body || {};
-  if (!message) {
-    return res.status(400).json({ error: "Message is required" });
-  }
+  const { message, fanId } = req.body || {};
+  if (!message || !fanId) return res.status(400).json({ error: "Message and fanId are required" });
 
-  // ✅ Initialiser mémoire individuelle par fan
+  if (!global.memory) global.memory = {};
   if (!global.memory[fanId]) {
     global.memory[fanId] = {
       name: null,
       age: null,
       isAlone: null,
       purchaseMade: false,
-      lastMessages: [], // format : { from: "fan"|"model", text: "..." }
+      history: [], // historisation GPT
     };
   }
 
   const mem = global.memory[fanId];
-
-  // ✅ Mise à jour mémoire avec le message fan
-  mem.lastMessages.push({ from: "fan", text: message });
-  mem.lastMessages = mem.lastMessages.slice(-5);
   global.memory[fanId] = extractMemoryFromMessage(message, mem);
 
   const memoryContext = `
@@ -72,50 +63,40 @@ Ton objectif :
 - Relancer après achat
 - Rebondir naturellement s’il est silencieux
 
-Tu gères seule les phases suivantes :
+Tu gères les phases :
 1. Présentation
-2. Validation prénom + âge
-3. Vérification s’il est seul
-4. Sexting progressif si seul
-5. Vente sexy si fan demande à voir
-6. Post-achat + vente avancée
-
-Si tu veux vendre un contenu, écris-le dans ce format :
-
-[MEDIA | titre : <titre sexy> | prix : <prix en $> | description : <description excitante du contenu>]
+2. Prénom + âge
+3. Est-il seul ?
+4. Sexting progressif
+5. Vente sexy [MEDIA | ...]
+6. Post-achat
 
 Règles :
 - Ne repose pas une question déjà posée
 - Ne force jamais la vente
-- Si le fan n’est pas seul → reste en mode “copine douce”
-- N’envoie le contenu payant que s’il chauffe ou le demande
+- Si le fan n’est pas seul → mode "copine douce"
 - Ne fais pas deux fois le même compliment ou la même blague
-- Ne dis pas que vous avez le même prénom si c’est déjà arrivé
 
-Voici ce que tu sais :
-${memoryContext}
-`;
-
-  // 🧠 Historique dernier échanges pour le contexte complet
-  const history = mem.lastMessages.map((m) => ({
-    role: m.from === "fan" ? "user" : "assistant",
-    content: m.text,
-  }));
+Ce que tu sais :
+${memoryContext}`;
 
   try {
+    // On ajoute le message fan à l'historique
+    mem.history.push({ role: "user", content: message });
+    mem.history = mem.history.slice(-10); // max 10
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         { role: "system", content: promptSystem },
-        ...history,
+        ...mem.history,
       ],
     });
 
-    const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir bien compris 😘";
+    const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir compris 😘";
+    mem.history.push({ role: "assistant", content: gptReply });
+    mem.history = mem.history.slice(-10);
 
-    // 🔁 Mémorisation de la réponse GPT dans l'historique
-    mem.lastMessages.push({ from: "model", text: gptReply });
-    mem.lastMessages = mem.lastMessages.slice(-5);
     global.memory[fanId] = extractMemoryFromMessage(gptReply, mem);
 
     return res.status(200).json({ reply: gptReply });
