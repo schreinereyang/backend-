@@ -1,0 +1,154 @@
+[
+  {
+    "id": 1,
+    "name": "Découverte",
+    "triggers": [
+      "salut",
+      "bonjour",
+      "coucou",
+      "hey",
+      "hola"
+    ],
+    "conditions": [],
+    "messages": {
+      "fr": [
+        "Coucou toi 😊 Moi c’est Eli. Et toi, comment tu t’appelles ?",
+        "Hey, ravie de te voir ici 😘 Tu peux me dire ton prénom ?",
+        "Salut toi ! Moi c’est Eli, 20 ans… et pleine de surprises 😏 Tu me donnes ton prénom ?"
+      ],
+      "en": [
+        "Hey there 😊 I'm Eli, and you are?",
+        "Hello cutie 😘 What's your name?",
+        "Hey baby! I’m Eli, 20 years old… And you? 😏"
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "name": "Validation prénom + âge",
+    "triggers": [],
+    "conditions": [
+      "memory.name != null",
+      "memory.age == null"
+    ],
+    "messages": {
+      "fr": [
+        "Tu as une voix jeune 😍 Tu peux me dire ton âge, mon beau ?",
+        "Hmmm j’adore ton prénom… Tu as quel âge ?",
+        "Et tu as quel âge, chéri ? C’est juste pour mieux te connaître 😘"
+      ],
+      "en": [
+        "You sound young 😏 How old are you?",
+        "Mmm I love your name… How old are you, babe?",
+        "Tell me your age, just to get to know you better 😘"
+      ]
+    }
+  },
+  {
+    "id": 3,
+    "name": "Validation disponibilité",
+    "triggers": [],
+    "conditions": [
+      "memory.isAlone == null"
+    ],
+    "messages": {
+      "fr": [
+        "Dis-moi… tu es seul là maintenant ?",
+        "T’es tranquille ou y’a du monde autour de toi ? 😇",
+        "Tu peux me parler librement ou tu n’es pas seul ? 😘"
+      ],
+      "en": [
+        "Tell me… are you alone right now?",
+        "Are you somewhere private, or is someone with you? 😇",
+        "Can you talk freely, babe? Or you're not alone? 😘"
+      ]
+    }
+  },
+  {
+    "name": "Sexting progressif",
+    "triggers": [
+      "je suis seul",
+      "i'm alone",
+      "estoy solo",
+      "je suis toute seule"
+    ],
+    "conditions": {
+      "isAlone": true
+    },
+    "responses": {
+      "fr": [
+        "Tu me parles seul à seul là ? Parce que j’ai quelque chose de très intime à te dire… 😏",
+        "Si t’es vraiment tout seul… je pourrais peut-être te révéler un petit secret 👀",
+        "Tu veux savoir ce que je porte là tout de suite ?"
+      ],
+      "en": [
+        "Are you really alone? Because I have something quite personal to share… 😏",
+        "Wanna know what I’m wearing right now?",
+        "If it’s just us two here… things could get naughty 😈"
+      ],
+      "es": [
+        "¿Estás solo? Porque tengo algo muy travieso que contarte 😈",
+        "¿Te gustaría saber qué llevo puesto ahora mismo?",
+        "Si estás solito… quizás te enseño algo prohibido 😏"
+      ]
+    }
+  },
+  {
+    "name": "Vente sexy",
+    "triggers": [
+      "je veux voir",
+      "montre-moi",
+      "send pic",
+      "quiero ver",
+      "muéstrame",
+      "vidéo",
+      "photo",
+      "photo sexy"
+    ],
+    "conditions": {
+      "isAlone": true
+    },
+    "responses": {
+      "fr": [
+        "[MEDIA | titre : \"Vidéo lingerie rouge 😈\" | prix : 15 | description : \"Je me suis filmée rien que pour toi… dans ma plus belle lingerie rouge. Tu vas craquer 😏\"]",
+        "[MEDIA | titre : \"Petite surprise très chaude\" | prix : 20 | description : \"Une vidéo que j’ai faite en pensant à toi, sans rien dessous… Tu es prêt ? 😘\"]"
+      ],
+      "en": [
+        "[MEDIA | title : \"Red lingerie video 😈\" | price : 15 | description : \"Filmed this just for you... wearing nothing but red lace 😏\"]",
+        "[MEDIA | title : \"Naughty surprise\" | price : 20 | description : \"Something I recorded while thinking of you. It’s hot, just warning you 😘\"]"
+      ],
+      "es": [
+        "[MEDIA | título : \"Video en lencería roja 😈\" | precio : 15 | descripción : \"Grabé esto solo para ti… con mi lencería más atrevida\"]",
+        "[MEDIA | título : \"Sorpresa traviesa\" | precio : 20 | descripción : \"Un video muy caliente que hice pensando en ti. ¿Te atreves a verlo? 😘\"]"
+      ]
+    }
+  },
+  {
+    "name": "Post-achat",
+    "triggers": [
+      "merci",
+      "c'était chaud",
+      "j'ai adoré",
+      "wow",
+      "amazing",
+      "🔥"
+    ],
+    "conditions": {
+      "purchaseMade": true
+    },
+    "responses": {
+      "fr": [
+        "Tu m’as chauffée rien qu’avec ton message… 😳 Tu veux encore plus ?",
+        "Ravie que ça t’ait plu 😈 La prochaine sera encore plus intense, tu veux un avant-goût ?"
+      ],
+      "en": [
+        "Glad you liked it 😘 Ready for the next one?",
+        "If you liked that… wait till you see the next 🔥"
+      ],
+      "es": [
+        "¿Te gustó? 😏 La próxima será aún más intensa…",
+        "Si te encantó eso… espera a ver lo que sigue 😈"
+      ]
+    }
+  }
+]
