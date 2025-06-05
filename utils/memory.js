@@ -2,36 +2,40 @@ export function extractMemoryFromMessage(message, memory) {
   if (!message || typeof message !== "string") return memory;
 
   const updatedMemory = { ...memory };
-  const safeName = (name) =>
-    name &&
-    name.length >= 2 &&
-    name.length <= 20 &&
-    !["Eli", "Moi", "Toi"].includes(name);
 
+  // 🧠 Historique des derniers messages
   updatedMemory.lastMessages = [...(updatedMemory.lastMessages || []), message].slice(-5);
 
-  // 🔁 Toujours mettre à jour le prénom si on le détecte
-  const nameMatchFR = message.match(/(?:je m'appelle|moi c.?est|appelle[- ]?moi|je suis)\s+([A-ZÀ-Ÿ][a-zà-ÿ\-']{2,})/i);
-  const nameMatchEN = message.match(/(?:my name is|i'?m|i am)\s+([A-ZÀ-Ÿ][a-zà-ÿ\-']{2,})/i);
+  // 🔄 Détection prénom (FR)
+  const nameMatchFR = message.match(/(?:je m'appelle|moi c.?est|je suis) ([A-ZÀ-ÿ][a-zÀ-ÿ]+)/i);
+  if (nameMatchFR) updatedMemory.name = nameMatchFR[1];
 
-  const detectedName = nameMatchFR?.[1] || nameMatchEN?.[1];
-  if (safeName(detectedName)) updatedMemory.name = detectedName;
+  // 🔄 Détection prénom (EN)
+  const nameMatchEN = message.match(/(?:my name is|i am|i'?m) ([A-ZÀ-ÿ][a-zÀ-ÿ]+)/i);
+  if (nameMatchEN) updatedMemory.name = nameMatchEN[1];
 
-  const ageMatch = message.match(/\b(?:j'ai|i'?m|i am)\s+(\d{2})\s*(?:ans|yo|years?)?/i);
+  // 🔄 Détection âge
+  const ageMatch = message.match(/\b(?:i'?m|i am|j'ai|age is|just turned)?\s*(\d{2})\s*(?:ans|yo|years? old)?\b/i);
   if (ageMatch) {
-    const age = parseInt(ageMatch[1], 10);
-    if (age >= 18 && age <= 99) updatedMemory.age = age;
+    const ageNum = parseInt(ageMatch[1], 10);
+    if (ageNum >= 18 && ageNum <= 99) updatedMemory.age = ageMatch[1];
   }
 
+  // 🔄 Détection solitude
   const lower = message.toLowerCase();
   if (lower.includes("je suis seul") || lower.includes("i'm alone") || lower.includes("im alone")) {
     updatedMemory.isAlone = true;
-  } else if (
-    lower.includes("je ne suis pas seul") ||
-    lower.includes("i'm not alone") ||
-    lower.includes("im not alone")
-  ) {
+  } else if (lower.includes("je ne suis pas seul") || lower.includes("i'm not alone") || lower.includes("im not alone")) {
     updatedMemory.isAlone = false;
+  }
+
+  // ✅ Phase automatique si fan donne prénom, âge ou dit qu’il est seul
+  if (updatedMemory.name && updatedMemory.age && typeof updatedMemory.isAlone === "boolean") {
+    updatedMemory.phase = Math.max(updatedMemory.phase || 1, 4); // passe au sexting
+  } else if (updatedMemory.name && updatedMemory.age) {
+    updatedMemory.phase = Math.max(updatedMemory.phase || 1, 3);
+  } else if (updatedMemory.name) {
+    updatedMemory.phase = Math.max(updatedMemory.phase || 1, 2);
   }
 
   return updatedMemory;
