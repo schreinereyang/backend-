@@ -6,6 +6,8 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+if (!global.memory) global.memory = {};  // 🧠 initialisation globale multi-fan
+
 export default async function handler(req, res) {
   const allowedOrigins = [
     "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn",
@@ -28,31 +30,35 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { message } = req.body || {};
+  const { message, fanId = "fan_default" } = req.body || {};
   if (!message) {
     return res.status(400).json({ error: "Message is required" });
   }
 
-  if (!global.memory) {
-    global.memory = {
+  // ✅ Initialiser mémoire individuelle par fan
+  if (!global.memory[fanId]) {
+    global.memory[fanId] = {
       name: null,
       age: null,
       isAlone: null,
-      lastMessages: [],
       purchaseMade: false,
+      lastMessages: [], // format : { from: "fan"|"model", text: "..." }
     };
   }
 
-  // 🧠 Mémorisation depuis le message fan
-  global.memory = extractMemoryFromMessage(message, global.memory);
-  console.log("🧠 Mémoire fan :", global.memory);
+  const mem = global.memory[fanId];
+
+  // ✅ Mise à jour mémoire avec le message fan
+  mem.lastMessages.push({ from: "fan", text: message });
+  mem.lastMessages = mem.lastMessages.slice(-5);
+  global.memory[fanId] = extractMemoryFromMessage(message, mem);
 
   const memoryContext = `
 Fan :
-- Prénom : ${global.memory.name || "inconnu"}
-- Âge : ${global.memory.age || "inconnu"}
-- Est seul ? ${global.memory.isAlone === true ? "oui" : global.memory.isAlone === false ? "non" : "inconnu"}
-- A déjà acheté ? ${global.memory.purchaseMade ? "oui" : "non"}
+- Prénom : ${mem.name || "inconnu"}
+- Âge : ${mem.age || "inconnu"}
+- Est seul ? ${mem.isAlone === true ? "oui" : mem.isAlone === false ? "non" : "inconnu"}
+- A déjà acheté ? ${mem.purchaseMade ? "oui" : "non"}
 `;
 
   const promptSystem = `
@@ -78,8 +84,6 @@ Si tu veux vendre un contenu, écris-le dans ce format :
 
 [MEDIA | titre : <titre sexy> | prix : <prix en $> | description : <description excitante du contenu>]
 
-Tu peux adapter le titre et la description selon ce que tu veux vendre.
-
 Règles :
 - Ne repose pas une question déjà posée
 - Ne force jamais la vente
@@ -87,22 +91,32 @@ Règles :
 - N’envoie le contenu payant que s’il chauffe ou le demande
 - Ne fais pas deux fois le même compliment ou la même blague
 - Ne dis pas que vous avez le même prénom si c’est déjà arrivé
+
+Voici ce que tu sais :
+${memoryContext}
 `;
+
+  // 🧠 Historique dernier échanges pour le contexte complet
+  const history = mem.lastMessages.map((m) => ({
+    role: m.from === "fan" ? "user" : "assistant",
+    content: m.text,
+  }));
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         { role: "system", content: promptSystem },
-        { role: "user", content: message },
+        ...history,
       ],
     });
 
     const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir bien compris 😘";
 
-    // 🧠 Mémorisation depuis la réponse IA
-    global.memory = extractMemoryFromMessage(gptReply, global.memory);
-    console.log("📝 Mémoire mise à jour après réponse :", global.memory);
+    // 🔁 Mémorisation de la réponse GPT dans l'historique
+    mem.lastMessages.push({ from: "model", text: gptReply });
+    mem.lastMessages = mem.lastMessages.slice(-5);
+    global.memory[fanId] = extractMemoryFromMessage(gptReply, mem);
 
     return res.status(200).json({ reply: gptReply });
   } catch (err) {
