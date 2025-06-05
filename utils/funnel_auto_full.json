@@ -1,7 +1,7 @@
 [
   {
     "id": 1,
-    "name": "Découverte",
+    "name": "Découverte et premiers mots",
     "triggers": [
       "salut",
       "bonjour",
@@ -46,7 +46,7 @@
   },
   {
     "id": 3,
-    "name": "Validation disponibilité",
+    "name": "Vérification de la disponibilité",
     "triggers": [],
     "conditions": [
       "memory.isAlone == null"
