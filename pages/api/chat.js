@@ -1,34 +1,29 @@
+# Génération du fichier chat.js complet et commenté avec intégration des nouveaux modules
+
+chat_js_code = """
+// pages/api/chat.js
+
 import OpenAI from "openai";
-import funnel from "../../utils/funnel_auto_full.json";
-import { extractMemoryFromMessage } from "../../utils/memory";
-import { liaPersona } from "../../utils/liaPersona";
+import fs from "fs";
+import path from "path";
+
+import funnel from "../../utils/funnel/funnel.json";
+import { extractMemoryFromMessage } from "../../utils/memory.js";
+import { getCurrentPhase, getRandomMessage } from "../../utils/phaseEngine.js";
+import { getScriptedMessage } from "../../utils/scriptEngine.js";
+import { getMediaForPhase } from "../../utils/mediaEngine.js";
+import { liaPersona } from "../../utils/liaPersona.js";
+
+// Charger le script verrouillé
+const scriptPath = path.resolve("utils/funnel/script_complete.json");
+const funnelScript = JSON.parse(fs.readFileSync(scriptPath, "utf8"));
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 export default async function handler(req, res) {
-  const allowedOrigins = [
-    "chrome-extension://ihifcomkeiifjhoepijbjgfhhjngjidn",
-    "https://backend-onlymoly.vercel.app",
-    "https://onlymoly.vercel.app"
-  ];
-
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  } else {
-    return res.status(403).json({ error: "Forbidden: Origin not allowed" });
-  }
-
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Vary", "Origin");
-
-  if (req.method === "OPTIONS") return res.status(200).end();
-
-  const { message } = req.body || {};
-  if (!message) return res.status(400).json({ error: "Message is required" });
+  const { message } = req.body;
 
   if (!global.memory) {
     global.memory = {
@@ -37,75 +32,98 @@ export default async function handler(req, res) {
       isAlone: null,
       lastMessages: [],
       purchaseMade: false,
-      phase: 1,
+      usedSteps: []
     };
   }
 
+  // Mise à jour de la mémoire avec les infos du message
   global.memory = extractMemoryFromMessage(message, global.memory);
-  console.log("🧠 Mémoire fan :", global.memory);
+  console.log("Mémoire actuelle :", global.memory);
 
-  const phase = funnel.find(p => p.id === global.memory.phase);
-  const messages = phase?.messages || [];
-  const notUsed = messages.filter(m => !global.memory.lastMessages?.includes(m.text));
+  // Détection de la phase actuelle
+  const currentPhase = getCurrentPhase(global.memory, funnel, message);
+  console.log("Phase actuelle détectée :", currentPhase?.name);
 
-  if (notUsed.length > 0) {
-    const aiReply = notUsed[Math.floor(Math.random() * notUsed.length)].text;
-    global.memory.lastMessages.push(aiReply);
-    if (global.memory.lastMessages.length > 5) global.memory.lastMessages.shift();
+  // Détection langue
+  const lang = /[a-zA-Z]/.test(message) && !/[éèàç]/i.test(message) ? "en" : "fr";
 
-    if (phase.autoNext) global.memory.phase++;
+  let aiReply;
+
+  // Si la phase est une phase verrouillée (sexting + vente), on applique le script
+  const lockedPhases = [
+    "Sexting progressif",
+    "Vente sexy",
+    "Sexting + vente avancée",
+    "Masturbation",
+    "Blowjob fantasy",
+    "Final penetration"
+  ];
+
+  if (lockedPhases.includes(currentPhase.name)) {
+    aiReply = getScriptedMessage(funnelScript, currentPhase.name, global.memory);
+
+    // Si un média est disponible et pas encore appelé explicitement
+    const mediaPack = getMediaForPhase(currentPhase.name);
+    if (mediaPack && !aiReply.includes("[MEDIA |")) {
+      aiReply += `\\n\\n[MEDIA | ${mediaPack.id}]`;
+    }
+
     return res.status(200).json({ reply: aiReply });
   }
 
-  const memoryContext = `
-Fan :
-- Prénom : ${global.memory.name || "inconnu"}
-- Âge : ${global.memory.age || "inconnu"}
+  // Sinon, réponse standard depuis le funnel
+  aiReply = getRandomMessage(currentPhase, lang);
+
+  // Si pas de message défini, fallback sur GPT
+  if (aiReply === "...") {
+    const memoryContext = `
+Fan:
+- Prénom: ${global.memory.name || "inconnu"}
+- Âge: ${global.memory.age || "inconnu"}
 - Est seul ? ${global.memory.isAlone === true ? "oui" : global.memory.isAlone === false ? "non" : "inconnu"}
-- A déjà acheté ? ${global.memory.purchaseMade ? "oui" : "non"}
-- Phase actuelle : ${global.memory.phase || 1}
 `;
 
-  const promptSystem = `
-Tu es ${liaPersona.name}, une modèle OnlyFans ${liaPersona.tone}, 20 ans, originaire de ${liaPersona.origin}.
-Tu es douce, joueuse, sexy, très attentive à ton fan.
+    const promptSystem = \`
+Tu es ${liaPersona.name}, une modèle OnlyFans ${liaPersona.tone} de ${liaPersona.origin}, 20 ans.
+Objectif : ${liaPersona.goal}
 
-Objectif :
-- Crée une vraie complicité
-- Fais-le parler
-- Monte en intensité
-- Propose un contenu sexy quand il est chaud (jamais trop tôt)
-- Relance s’il est silencieux
-
-⚠️ Tu es dans la phase ${global.memory.phase} : ${phase?.name || "inconnue"}
-
-Tu peux t’inspirer de ces idées :
-${phase?.messages.map(m => "- " + m.text).join("\n") || "- Aucune idée fournie"}
-
+Voici ce que tu sais sur le fan :
 ${memoryContext}
-`;
 
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: promptSystem },
-        { role: "user", content: message },
-      ],
-    });
+Règles :
+- Ne repose pas une question déjà posée si tu connais la réponse
+- Adapte-toi à ses mots
+- S’il n’est pas seul, passe en mode "copine virtuelle" sans vendre
 
-    const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir bien compris 😘";
+Style : ${liaPersona.style}
+Personnalité : ${liaPersona.personality}
+\`;
 
-    global.memory.lastMessages.push(gptReply);
-    if (global.memory.lastMessages.length > 5) global.memory.lastMessages.shift();
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: promptSystem },
+          { role: "user", content: message },
+        ],
+      });
 
-    // 🧠 mise à jour mémoire depuis la réponse GPT aussi
-    global.memory = extractMemoryFromMessage(gptReply, global.memory);
-
-    if (phase?.autoNext) global.memory.phase++;
-    return res.status(200).json({ reply: gptReply });
-  } catch (err) {
-    console.error("❌ Erreur GPT:", err);
-    return res.status(500).json({ error: "Erreur GPT" });
+      const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir bien compris 😘";
+      return res.status(200).json({ reply: gptReply });
+    } catch (error) {
+      console.error("Erreur GPT:", error);
+      return res.status(500).json({ error: "Erreur GPT" });
+    }
   }
+
+  // Réponse finale classique
+  res.status(200).json({ reply: aiReply });
 }
+"""
+
+# Sauvegarde du fichier chat.js final
+chat_js_path = "/mnt/data/chat_final.js"
+with open(chat_js_path, "w", encoding="utf-8") as f:
+    f.write(chat_js_code.strip())
+
+chat_js_path
