@@ -44,21 +44,10 @@ export default async function handler(req, res) {
   global.memory = extractMemoryFromMessage(message, global.memory);
   console.log("🧠 Mémoire fan :", global.memory);
 
-  const memoryContext = `
-Fan :
-- Prénom : ${global.memory.name || "inconnu"}
-- Âge : ${global.memory.age || "inconnu"}
-- Est seul ? ${global.memory.isAlone === true ? "oui" : global.memory.isAlone === false ? "non" : "inconnu"}
-- A déjà acheté ? ${global.memory.purchaseMade ? "oui" : "non"}
-- Phase actuelle : ${global.memory.phase || 1}
-`;
-
-  // Trouve la phase actuelle dans le funnel
   const phase = funnel.find(p => p.id === global.memory.phase);
   const messages = phase?.messages || [];
   const notUsed = messages.filter(m => !global.memory.lastMessages?.includes(m.text));
 
-  // Prends un message non utilisé de la phase
   if (notUsed.length > 0) {
     const aiReply = notUsed[Math.floor(Math.random() * notUsed.length)].text;
     global.memory.lastMessages.push(aiReply);
@@ -68,7 +57,15 @@ Fan :
     return res.status(200).json({ reply: aiReply });
   }
 
-  // Sinon → fallback GPT (toujours dans la phase)
+  const memoryContext = `
+Fan :
+- Prénom : ${global.memory.name || "inconnu"}
+- Âge : ${global.memory.age || "inconnu"}
+- Est seul ? ${global.memory.isAlone === true ? "oui" : global.memory.isAlone === false ? "non" : "inconnu"}
+- A déjà acheté ? ${global.memory.purchaseMade ? "oui" : "non"}
+- Phase actuelle : ${global.memory.phase || 1}
+`;
+
   const promptSystem = `
 Tu es ${liaPersona.name}, une modèle OnlyFans ${liaPersona.tone}, 20 ans, originaire de ${liaPersona.origin}.
 Tu es douce, joueuse, sexy, très attentive à ton fan.
@@ -80,15 +77,10 @@ Objectif :
 - Propose un contenu sexy quand il est chaud (jamais trop tôt)
 - Relance s’il est silencieux
 
-⚠️ Tu es dans la phase : ${phase?.name || "inconnue"}
+⚠️ Tu es dans la phase ${global.memory.phase} : ${phase?.name || "inconnue"}
 
-Règles :
-- Ne repose pas une question déjà posée
-- Si fan est seul → tu peux chauffer
-- S’il n’est pas seul → reste douce, jamais sexy
-- Ne vends rien sans désir préalable
-- Pas de doublon : évite les réponses déjà données
-- Ne fais pas deux fois la même phrase
+Tu peux t’inspirer de ces idées :
+${phase?.messages.map(m => "- " + m.text).join("\n") || "- Aucune idée fournie"}
 
 ${memoryContext}
 `;
@@ -103,8 +95,12 @@ ${memoryContext}
     });
 
     const gptReply = completion.choices?.[0]?.message?.content || "Je ne suis pas sûre d’avoir bien compris 😘";
+
     global.memory.lastMessages.push(gptReply);
     if (global.memory.lastMessages.length > 5) global.memory.lastMessages.shift();
+
+    // 🧠 mise à jour mémoire depuis la réponse GPT aussi
+    global.memory = extractMemoryFromMessage(gptReply, global.memory);
 
     if (phase?.autoNext) global.memory.phase++;
     return res.status(200).json({ reply: gptReply });
