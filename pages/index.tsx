@@ -1,71 +1,70 @@
-// pages/index.tsx (accueil admin - MVP OnlyMoly)
+# Recréation du fichier ZIP avec les composants UI après reset
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import zipfile
+import os
 
-export default function DashboardMVP() {
-  const [models, setModels] = useState([]);
-  const [newModel, setNewModel] = useState({
-    name: "",
-    assistantId: "",
-    age: "",
-    style: "",
-  });
+# Définition du contenu des fichiers
+components_code = {
+    "components/ui/card.tsx": """
+export function Card({ children, className }: any) {
+  return <div className={`rounded-xl shadow bg-white/5 ${className}`}>{children}</div>;
+}
 
-  const handleAddModel = () => {
-    if (!newModel.name || !newModel.assistantId) return;
-    setModels([...models, newModel]);
-    setNewModel({ name: "", assistantId: "", age: "", style: "" });
-  };
-
+export function CardContent({ children, className }: any) {
+  return <div className={`p-4 ${className}`}>{children}</div>;
+}
+""",
+    "components/ui/button.tsx": """
+export function Button({ children, onClick, className }: any) {
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
-      <h1 className="text-3xl font-bold mb-6">🎛️ OnlyMoly Admin - Dashboard MVP</h1>
-
-      <Card className="bg-gray-800 mb-6">
-        <CardContent className="space-y-4 p-4">
-          <h2 className="text-xl font-semibold">➕ Ajouter un modèle IA</h2>
-          <Input
-            placeholder="Nom du modèle (ex: Eli)"
-            value={newModel.name}
-            onChange={(e) => setNewModel({ ...newModel, name: e.target.value })}
-          />
-          <Input
-            placeholder="Assistant ID OpenAI"
-            value={newModel.assistantId}
-            onChange={(e) => setNewModel({ ...newModel, assistantId: e.target.value })}
-          />
-          <Input
-            placeholder="Âge du modèle (optionnel)"
-            value={newModel.age}
-            onChange={(e) => setNewModel({ ...newModel, age: e.target.value })}
-          />
-          <Input
-            placeholder="Style ou personnalité (ex: douce, joueuse…)"
-            value={newModel.style}
-            onChange={(e) => setNewModel({ ...newModel, style: e.target.value })}
-          />
-          <Button onClick={handleAddModel} className="bg-pink-600 hover:bg-pink-700">
-            Ajouter le modèle
-          </Button>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">📋 Modèles enregistrés</h2>
-        {models.map((model, index) => (
-          <Card key={index} className="bg-gray-800">
-            <CardContent className="p-4">
-              <p><strong>Nom :</strong> {model.name}</p>
-              <p><strong>Assistant ID :</strong> {model.assistantId}</p>
-              <p><strong>Âge :</strong> {model.age}</p>
-              <p><strong>Style :</strong> {model.style}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 rounded bg-pink-600 hover:bg-pink-700 transition ${className}`}
+    >
+      {children}
+    </button>
   );
 }
+""",
+    "components/ui/input.tsx": """
+export function Input({ value, onChange, placeholder }: any) {
+  return (
+    <input
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className="w-full px-3 py-2 rounded bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-pink-500"
+    />
+  );
+}
+""",
+    "tailwind.config.js": """
+module.exports = {
+  content: ["./pages/**/*.{js,ts,jsx,tsx}", "./components/**/*.{js,ts,jsx,tsx}"],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+""",
+    "postcss.config.js": """
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+"""
+}
+
+# Création du zip
+zip_path = "/mnt/data/onlymoly-ui-components.zip"
+with zipfile.ZipFile(zip_path, "w") as zipf:
+    for filepath, content in components_code.items():
+        full_path = f"/tmp/{os.path.basename(filepath)}"
+        os.makedirs(os.path.dirname(f"/tmp/{filepath}"), exist_ok=True)
+        with open(f"/tmp/{filepath}", "w", encoding="utf-8") as f:
+            f.write(content.strip())
+        zipf.write(f"/tmp/{filepath}", arcname=filepath)
+
+zip_path
