@@ -1,6 +1,6 @@
-# Génération du fichier chat.js final avec tout intégré : langage naturel, 3 phrases max, style fille de 20 ans
+# Réécriture de ton code existant en y intégrant l'appel au Assistant OpenAI, tout en gardant ta logique mémoire et phase
 
-chat_js_final_code = """
+updated_chat_js = """
 // pages/api/chat.js
 
 import OpenAI from "openai";
@@ -12,22 +12,27 @@ import { extractMemoryFromMessage } from "../../utils/memory.js";
 import { getCurrentPhase, getRandomMessage } from "../../utils/phaseEngine.js";
 import { getScriptedMessage } from "../../utils/scriptEngine.js";
 import { getMediaForPhase } from "../../utils/mediaEngine.js";
-import { liaPersona } from "../../utils/liaPersona.js";
-
-// Charger le script verrouillé
-const scriptPath = path.resolve("utils/funnel/script_complete.json");
-const funnelScript = JSON.parse(fs.readFileSync(scriptPath, "utf8"));
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Mémorisation des thread_id par fan
+const fanThreads = {};
+
+// Assistant + fichiers à configurer
+const ASSISTANT_ID = "asst_r1l8vGPUUwmul0wGKDZiJj6m"; // 🔁 Remplace par ton ID
+const FILE_IDS = [
+  "file-Uqq5vvhMyYL7ACY9d2Jz1J",   // ← medias.json
+  "file-BYErHKKt9LBBYEbtKk6Wfs"    // ← script_complete.json
+]; // 🔁 Remplace par tes vrais file_ids
+
 export default async function handler(req, res) {
   try {
-    const { message } = req.body;
+    const { message, fanId } = req.body;
 
-    if (!message) {
-      return res.status(400).json({ error: "Message manquant" });
+    if (!message || !fanId) {
+      return res.status(400).json({ error: "Message ou fanId manquant" });
     }
 
     if (!global.memory) {
@@ -41,20 +46,15 @@ export default async function handler(req, res) {
       };
     }
 
-    // Mise à jour de la mémoire
+    // 🧠 Mise à jour mémoire
     global.memory = extractMemoryFromMessage(message, global.memory);
     console.log("🧠 Mémoire fan :", global.memory);
 
-    // Phase actuelle
+    // 🔁 Détecter phase
     const currentPhase = getCurrentPhase(global.memory, funnel, message);
     console.log("🚦 Phase détectée :", currentPhase?.name);
 
-    // Détection langue
-    const lang = /[a-zA-Z]/.test(message) && !/[éèàç]/i.test(message) ? "en" : "fr";
-
-    let aiReply;
-
-    // 🔒 Si phase verrouillée → script + vente
+    // 🔒 Script verrouillé
     const lockedPhases = [
       "Sexting progressif",
       "Vente sexy",
@@ -65,8 +65,10 @@ export default async function handler(req, res) {
     ];
 
     if (lockedPhases.includes(currentPhase.name)) {
-      aiReply = getScriptedMessage(funnelScript, currentPhase.name, global.memory);
+      const scriptPath = path.resolve("utils/funnel/script_complete.json");
+      const funnelScript = JSON.parse(fs.readFileSync(scriptPath, "utf8"));
 
+      let aiReply = getScriptedMessage(funnelScript, currentPhase.name, global.memory);
       const mediaPack = getMediaForPhase(currentPhase.name);
       if (mediaPack && !aiReply.includes("[MEDIA |")) {
         aiReply += `\\n\\n[MEDIA | ${mediaPack.id}]`;
@@ -75,75 +77,45 @@ export default async function handler(req, res) {
       return res.status(200).json({ reply: aiReply });
     }
 
-    // 🧠 Sinon, message standard funnel
-    aiReply = getRandomMessage(currentPhase, lang);
+    // Si pas de message défini dans funnel → GPT assistant
+    const aiReply = getRandomMessage(currentPhase, "fr");
 
-    // 📡 Si aucun message défini → fallback GPT
     if (aiReply === "...") {
-      const memoryContext = `
-Fan:
-- Prénom: ${global.memory.name || "inconnu"}
-- Âge: ${global.memory.age || "inconnu"}
-- Est seul ? ${global.memory.isAlone === true ? "oui" : global.memory.isAlone === false ? "non" : "inconnu"}
-`;
-
-      const promptSystem = \`
-Tu es ${liaPersona.name}, une modèle OnlyFans de 20 ans, originaire d'Argentine. Tu es douce, sexy et joueuse.
-
-🧠 Objectif :
-Créer une vraie complicité avec le fan et l’exciter subtilement.
-
-📌 Contexte :
-${memoryContext}
-
-🎯 Règles :
-- Ne commence pas chaque message par "Hey", "Hola", "Bonjour"
-- Ne dis pas “je suis Eli” plusieurs fois, une seule suffit
-- Varie tes débuts : réagis, taquine, enchaîne sans toujours poser de questions
-- Ne répète pas les mêmes infos
-- Si tu connais prénom ou âge → ne redemande pas
-- Si le fan n’est pas seul, reste douce et calme
-- Si le fan est chaud → monte doucement
-
-🗣️ Style :
-- Langage **très simple**, **jeune**, **sans tournure compliquée**
-- **Jamais soutenu**
-- **Maximum 3 phrases par message**
-- Si c’est plus long → coupe en deux messages
-- Écris comme une fille de 20 ans sur Insta ou WhatsApp : naturel, spontané, direct
-- Varie le ton : parfois une question, un mot, un emoji, un rire…
-
-💋 Exemples :
-"tu veux savoir ?"  
-"j’te dis pas 😏"  
-"t’as pensé à moi ? 🥺"  
-"c’est ta faute 😈"  
-"j’me suis filmée là... 🫣"
-\`;
-
-      try {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4",
-          messages: [
-            { role: "system", content: promptSystem },
-            { role: "user", content: message },
-          ],
-        });
-
-        const gptReply = completion.choices?.[0]?.message?.content || "Hmm… tu veux que je recommence ? 😘";
-        return res.status(200).json({ reply: gptReply });
-      } catch (error) {
-        if (error.code === "insufficient_quota") {
-          console.warn("⛔ Quota OpenAI dépassé !");
-          return res.status(503).json({ reply: "Je suis un peu à bout de souffle là... Essaie encore dans quelques instants 😘" });
-        }
-
-        console.error("💥 Erreur GPT:", error);
-        return res.status(500).json({ error: "Erreur GPT" });
+      // ⛓ Créer ou réutiliser un thread
+      if (!fanThreads[fanId]) {
+        const thread = await openai.beta.threads.create();
+        fanThreads[fanId] = thread.id;
       }
+
+      const threadId = fanThreads[fanId];
+
+      // Message fan
+      await openai.beta.threads.messages.create(threadId, {
+        role: "user",
+        content: message
+      });
+
+      // Lancer le run assistant
+      const run = await openai.beta.threads.runs.create(threadId, {
+        assistant_id: ASSISTANT_ID,
+        instructions: "Utilise les fichiers joints pour suivre le bon script sexy selon la phase.",
+        file_ids: FILE_IDS
+      });
+
+      let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+      while (runStatus.status !== "completed") {
+        await new Promise(r => setTimeout(r, 1000));
+        runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+      }
+
+      const messages = await openai.beta.threads.messages.list(threadId);
+      const gptReply = messages.data[0].content[0].text.value;
+
+      return res.status(200).json({ reply: gptReply });
     }
 
-    res.status(200).json({ reply: aiReply });
+    // Réponse normale
+    return res.status(200).json({ reply: aiReply });
   } catch (err) {
     console.error("💥 Erreur dans /api/chat :", err);
     return res.status(500).json({ error: "Erreur serveur dans chat.js" });
@@ -151,9 +123,9 @@ ${memoryContext}
 }
 """
 
-# Sauvegarde du fichier final
-final_chat_path = "/mnt/data/chat_final_ultra_naturel.js"
-with open(final_chat_path, "w", encoding="utf-8") as f:
-    f.write(chat_js_final_code.strip())
+# Sauvegarder le nouveau fichier chat.js modifié
+chat_js_path = "/mnt/data/chat_assistant_integrated.js"
+with open(chat_js_path, "w", encoding="utf-8") as f:
+    f.write(updated_chat_js.strip())
 
-final_chat_path
+chat_js_path
