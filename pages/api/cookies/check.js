@@ -1,28 +1,41 @@
 // pages/api/cookies/check.js
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  user: process.env.PGUSER,
+  host: process.env.PGHOST,
+  database: process.env.PGDATABASE,
+  password: process.env.PGPASSWORD,
+  port: process.env.PGPORT,
+});
 
 export default async function handler(req, res) {
   const { modelId } = req.query;
   const clientKey = req.headers['x-api-key'];
   const SERVER_SECRET = process.env.CHECK_API_KEY;
 
-  // Sécurité : bloquer toute requête non autorisée
+  // 🔐 Vérification de sécurité
   if (!modelId || !clientKey || clientKey !== SERVER_SECRET) {
     return res.status(403).json({ error: 'Unauthorized' });
   }
 
   try {
-    const response = await fetch(`http://localhost:3001/status/${modelId}`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-      timeout: 3000, // (optionnel) si tu utilises axios, sinon ignorer
-    });
+    const client = await pool.connect();
 
-    const data = await response.json();
+    const result = await client.query(
+      'SELECT connected FROM models WHERE id = $1 LIMIT 1',
+      [modelId]
+    );
 
-    return res.status(200).json(data);
+    client.release();
+
+    if (result.rows.length > 0) {
+      return res.status(200).json({ connected: result.rows[0].connected === true });
+    } else {
+      return res.status(200).json({ connected: false });
+    }
   } catch (err) {
-    console.error('❌ Erreur de connexion au backend VPS:', err.message || err);
-    return res.status(500).json({ error: 'VPS unreachable' });
+    console.error('❌ Erreur PostgreSQL:', err);
+    return res.status(500).json({ error: 'Database error' });
   }
 }
