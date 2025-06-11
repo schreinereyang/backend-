@@ -1,70 +1,21 @@
-# Recréation du fichier ZIP avec les composants UI après reset
+// pages/index.tsx
+import Link from 'next/link';
 
-import zipfile
-import os
-
-# Définition du contenu des fichiers
-components_code = {
-    "components/ui/card.tsx": """
-export function Card({ children, className }: any) {
-  return <div className={`rounded-xl shadow bg-white/5 ${className}`}>{children}</div>;
-}
-
-export function CardContent({ children, className }: any) {
-  return <div className={`p-4 ${className}`}>{children}</div>;
-}
-""",
-    "components/ui/button.tsx": """
-export function Button({ children, onClick, className }: any) {
+export default function Home() {
   return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-2 rounded bg-pink-600 hover:bg-pink-700 transition ${className}`}
-    >
-      {children}
-    </button>
+    <div className="min-h-screen bg-[#0b0f1a] text-white flex flex-col items-center justify-center px-4 py-20">
+      <h1 className="text-4xl font-bold text-purple-400 mb-4">
+        👋 Bienvenue sur OnlyMoly
+      </h1>
+      <p className="text-lg text-gray-300 mb-10 text-center max-w-xl">
+        Connecte ton compte OnlyFans, automatise tes ventes, et laisse l'IA faire le reste. 🚀
+      </p>
+
+      <Link href="/models">
+        <button className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded text-white font-semibold transition">
+          🔐 Lancer la plateforme
+        </button>
+      </Link>
+    </div>
   );
 }
-""",
-    "components/ui/input.tsx": """
-export function Input({ value, onChange, placeholder }: any) {
-  return (
-    <input
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      className="w-full px-3 py-2 rounded bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-pink-500"
-    />
-  );
-}
-""",
-    "tailwind.config.js": """
-module.exports = {
-  content: ["./pages/**/*.{js,ts,jsx,tsx}", "./components/**/*.{js,ts,jsx,tsx}"],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
-""",
-    "postcss.config.js": """
-module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
-"""
-}
-
-# Création du zip
-zip_path = "/mnt/data/onlymoly-ui-components.zip"
-with zipfile.ZipFile(zip_path, "w") as zipf:
-    for filepath, content in components_code.items():
-        full_path = f"/tmp/{os.path.basename(filepath)}"
-        os.makedirs(os.path.dirname(f"/tmp/{filepath}"), exist_ok=True)
-        with open(f"/tmp/{filepath}", "w", encoding="utf-8") as f:
-            f.write(content.strip())
-        zipf.write(f"/tmp/{filepath}", arcname=filepath)
-
-zip_path
