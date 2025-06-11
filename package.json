@@ -12,12 +12,13 @@
     "googleapis": "^148.0.0",
     "next": "^13.4.12",
     "openai": "^4.20.1",
+    "pg": "^8.16.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "typescript": "^5.3.3",
+    "@types/node": "^18.17.19",
     "@types/react": "^18.2.37",
-    "@types/node": "^18.17.19"
+    "typescript": "^5.3.3"
   }
 }
