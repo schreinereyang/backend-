@@ -1,7 +1,7 @@
 // pages/models.tsx
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import LayoutDashboard from '@/components/LayoutDashboard';
+import LayoutDashboard from '../components/LayoutDashboard';
 
 type Model = {
   id: number;
