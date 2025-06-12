@@ -1,4 +1,4 @@
- {
+ 
     "medias": [
         {
             "id": "funnel01",
@@ -39,9 +39,3 @@
         }
     ]
 }
-
-file_path = "/mnt/data/medias.json"
-with open(file_path, "w", encoding="utf-8") as f:
-    json.dump(media_data, f, ensure_ascii=False, indent=2)
-
-file_path
