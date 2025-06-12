@@ -1,23 +1,67 @@
-// utils/mediaEngine.js
-
 import fs from 'fs';
 import path from 'path';
 
+// 🔗 Chargement du fichier medias.json
 const mediaPath = path.resolve('utils/funnel/medias.json');
 const medias = JSON.parse(fs.readFileSync(mediaPath, 'utf8'));
 
+// 🔥 Mots-clés pour la détection hors-script
+const CATEGORY_KEYWORDS = {
+  ass: "fesses",
+  booty: "fesses",
+  butt: "fesses",
+  fesses: "fesses",
+  boobs: "seins",
+  tits: "seins",
+  seins: "seins",
+  pov: "POV",
+  lingerie: "lingerie",
+  nue: "nudité",
+  naked: "nudité",
+  hot: "lingerie",
+  show: "lingerie"
+};
+
 /**
- * Récupère le pack média correspondant à une phase donnée
- * @param {string} phaseName - Nom de la phase (doit correspondre au champ "phase" du pack)
- * @returns {object|null} - Pack média complet (titre, vidéos, teasing, etc.)
+ * 🎯 Média par PHASE — utilisé dans le funnel classique (vente scriptée)
+ * @param {string} phaseName
+ * @returns {object|null}
  */
 export function getMediaForPhase(phaseName) {
   return medias.find(pack => pack.phase === phaseName) || null;
 }
 
 /**
- * Récupère tous les IDs de packs disponibles
+ * 📦 Tous les IDs de packs funnel
+ * @returns {string[]}
  */
 export function listMediaPackIds() {
   return medias.map(p => p.id);
+}
+
+/**
+ * 🔥 Sélection hors-script — cherche un média selon les mots sexy du fan
+ * @param {string} userMessage
+ * @returns {object|null}
+ */
+export function findBestMatchingMedia(userMessage) {
+  const msg = userMessage.toLowerCase();
+
+  let matchedCategory = null;
+  for (const keyword in CATEGORY_KEYWORDS) {
+    if (msg.includes(keyword)) {
+      matchedCategory = CATEGORY_KEYWORDS[keyword];
+      break;
+    }
+  }
+
+  if (!matchedCategory) return null;
+
+  const candidates = medias.filter(
+    (m) => m.category?.toLowerCase() === matchedCategory
+  );
+
+  if (candidates.length === 0) return null;
+
+  return candidates.sort((a, b) => b.price - a.price)[0];
 }
