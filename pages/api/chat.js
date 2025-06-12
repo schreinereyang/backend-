@@ -1,6 +1,3 @@
-# Réécriture de ton code existant en y intégrant l'appel au Assistant OpenAI, tout en gardant ta logique mémoire et phase
-
-updated_chat_js = """
 // pages/api/chat.js
 
 import OpenAI from "openai";
