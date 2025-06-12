@@ -5,10 +5,10 @@ import fs from "fs";
 import path from "path";
 
 import funnel from "../../utils/funnel/funnel.json";
-import { extractMemoryFromMessage } from "../../utils/memory.js";
-import { getCurrentPhase, getRandomMessage } from "../../utils/phaseEngine.js";
-import { getScriptedMessage } from "../../utils/scriptEngine.js";
-import { getMediaForPhase } from "../../utils/mediaEngine.js";
+import { extractMemoryFromMessage } from "../../utils/memory";
+import { getCurrentPhase, getRandomMessage } from "../../utils/phaseEngine";
+import { getScriptedMessage } from "../../utils/scriptEngine";
+import { getMediaForPhase } from "../../utils/mediaEngine";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
       let aiReply = getScriptedMessage(funnelScript, currentPhase.name, global.memory);
       const mediaPack = getMediaForPhase(currentPhase.name);
       if (mediaPack && !aiReply.includes("[MEDIA |")) {
-        aiReply += `\\n\\n[MEDIA | ${mediaPack.id}]`;
+        aiReply += `\n\n[MEDIA | ${mediaPack.id}]`;
       }
 
       return res.status(200).json({ reply: aiReply });
@@ -118,11 +118,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Erreur serveur dans chat.js" });
   }
 }
-"""
-
-# Sauvegarder le nouveau fichier chat.js modifié
-chat_js_path = "/mnt/data/chat_assistant_integrated.js"
-with open(chat_js_path, "w", encoding="utf-8") as f:
-    f.write(updated_chat_js.strip())
-
-chat_js_path
