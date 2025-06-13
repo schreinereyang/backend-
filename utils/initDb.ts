@@ -1,6 +1,3 @@
-
-// 🧠 Script automatisé : utils/initDb.ts
-
 import { Pool } from "pg";
 
 const pool = new Pool({
@@ -9,7 +6,7 @@ const pool = new Pool({
 
 async function createTables() {
   try {
-    await pool.query(\`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS models (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
@@ -43,10 +40,11 @@ async function createTables() {
         model_id INTEGER REFERENCES models(id),
         subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-    \`);
-    console.log("✅ Tables PostgreSQL créées avec succès.");
+    `);
+
+    console.log("✅ Tables créées avec succès.");
   } catch (error) {
-    console.error("❌ Erreur création des tables :", error);
+    console.error("❌ Erreur création tables :", error);
   } finally {
     await pool.end();
   }
