@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "init-db": "ts-node utils/initDb.ts"
-  },
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "init-db": "ts-node utils/initDb.ts",
+  "seed": "ts-node utils/seed.ts"
+},
   "dependencies": {
     "googleapis": "^148.0.0",
     "next": "^13.4.12",
