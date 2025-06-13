@@ -5,7 +5,12 @@ const pool = new Pool({
 });
 
 async function createTables() {
+  console.log("🔄 Connexion à la base...");
+
   try {
+    await pool.query("SELECT 1"); // test simple
+    console.log("✅ Connexion OK");
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS models (
         id SERIAL PRIMARY KEY,
