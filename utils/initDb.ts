@@ -1,4 +1,4 @@
-import "dotenv/config"; // 🔑 Charge les variables d’environnement (.env.local)
+import "dotenv/config";
 import { Pool } from "pg";
 
 console.log("📡 DATABASE_URL =", process.env.DATABASE_URL);
