@@ -65,3 +65,13 @@ export function findBestMatchingMedia(userMessage) {
 
   return candidates.sort((a, b) => b.price - a.price)[0];
 }
+
+/**
+ * 💄 Formate un média pour l’envoi via OnlyFans
+ * @param {object} media - un pack média (id, title, price...)
+ * @returns {string}
+ */
+export function formatMediaForOnlyFans(media) {
+  if (!media) return "";
+  return `[MEDIA | ${media.id}] ${media.title} – ${media.price}€`;
+}
