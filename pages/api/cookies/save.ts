@@ -1,4 +1,3 @@
-// pages/api/cookies/save.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Pool } from 'pg';
 
@@ -16,11 +15,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const client = await pool.connect();
 
+    // 📝 Enregistrer ou mettre à jour le cookie
     await client.query(`
       INSERT INTO onlyfans_cookies (model_id, cookie)
       VALUES ($1, $2)
       ON CONFLICT (model_id) DO UPDATE SET cookie = $2
     `, [modelId, cookie]);
+
+    // ✅ Mettre à jour le statut de connexion dans la table models
+    await client.query(`
+      UPDATE models SET connected = true WHERE id = $1
+    `, [modelId]);
 
     client.release();
     return res.status(200).json({ success: true });
